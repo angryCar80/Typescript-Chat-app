@@ -31,18 +31,18 @@ const server = net.createServer((socket) => {
       return;
     }
     if (message === "/help") {
-      console.log("How To Use Commandes: ");
-      console.log(
-        chalk.blue("   Every Chat Command Starts With '/' character   "),
+      socket.write(chalk.blue("\nHow To Use Commandes: \n"));
+      socket.write(
+        chalk.blue("Every Chat Command Starts With '/' character   "),
       );
-      console.log(chalk.blue(" so you can say /clear: to clear the screen"));
-      console.log(chalk.blue(" you can say /users: to see online users"));
-      console.log(
+      socket.write(chalk.blue(" so you can say /clear: to clear the screen"));
+      socket.write(chalk.blue(" you can say /users: to see online users"));
+      socket.write(
         chalk.blue(
-          " you can say /dm <username> <message>: to send private message to a users",
+          "you can say /dm <username> <message>: to send private message to a users",
         ),
       );
-      console.log(chalk.whiteBright("/help: current screen"));
+      socket.write(chalk.whiteBright("\n/help: current screen"));
     }
     if (message.startsWith("/dm")) {
       const parts = message.slice(4).trim().split(" ");
