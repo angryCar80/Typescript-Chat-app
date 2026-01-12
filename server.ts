@@ -25,6 +25,25 @@ const server = net.createServer((socket) => {
       return;
     }
 
+    if (message === "/users") {
+      const userList = clients.map((c) => c.username).join("\n");
+      socket.write(chalk.cyan(`Online users: \n${userList}\n`));
+      return;
+    }
+    if (message === "/help") {
+      console.log("How To Use Commandes: ");
+      console.log(
+        chalk.blue("   Every Chat Command Starts With '/' character   "),
+      );
+      console.log(chalk.blue(" so you can say /clear: to clear the screen"));
+      console.log(chalk.blue(" you can say /users: to see online users"));
+      console.log(
+        chalk.blue(
+          " you can say /dm <username> <message>: to send private message to a users",
+        ),
+      );
+      console.log(chalk.whiteBright("/help: current screen"));
+    }
     if (message.startsWith("/dm")) {
       const parts = message.slice(4).trim().split(" ");
       const targetUser = parts[0];

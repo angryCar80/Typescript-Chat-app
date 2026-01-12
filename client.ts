@@ -35,6 +35,12 @@ rl.on("line", (input) => {
           console.log("Usage: /dm <username> <message>");
         }
         break;
+      case "users":
+        socket.write("/users");
+        break;
+      case "help":
+        socket.write("/help");
+        break;
       default:
         console.log(`Unknown command: ${command}`);
     }
