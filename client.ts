@@ -41,8 +41,11 @@ rl.on("line", (input) => {
       case "help":
         socket.write("/help");
         break;
+      case "setstatus":
+        socket.write("/setstatus");
+        break;
       default:
-        console.log(`Unknown command: ${command}`);
+        console.log(`Unknown command: ${command}, try '/help' command`);
     }
   } else {
     socket.write(input);
