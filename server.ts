@@ -33,7 +33,7 @@ const server = net.createServer((socket) => {
       return;
     }
     if (message.startsWith("/setstatus")) {
-      const parts: string[] = message.slice(10).trim().split(" ");
+      const parts: string[] = message.slice(11).trim().split(" ");
       const newStatus = parts[0]?.toLowerCase();
 
       if (newStatus === "online") {
@@ -48,7 +48,6 @@ const server = net.createServer((socket) => {
       }
       const clientIndex: number = clients.findIndex((c) => c.socket === socket);
       if (clientIndex !== -1) {
-        clients[clientIndex].status = status;
         socket.write(chalk.yellow(`Status changed to: ${newStatus}\n`));
         broadcast(chalk.yellow(`→ ${username} is now ${newStatus}\n`), socket);
       } else {
@@ -79,7 +78,7 @@ const server = net.createServer((socket) => {
       return;
     }
     if (message.startsWith("/dm")) {
-      const parts = message.slice(4).trim().split(" ");
+      const parts = message.slice(3).trim().split(" ");
       const targetUser = parts[0];
       const dmMessage = parts.slice(1).join(" ");
 

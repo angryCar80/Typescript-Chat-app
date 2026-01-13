@@ -42,7 +42,12 @@ rl.on("line", (input) => {
         socket.write("/help");
         break;
       case "setstatus":
-        socket.write("/setstatus");
+        if (args.length >= 1) {
+          const newStatus = args[0];
+          socket.write(`/setstatus ${newStatus}`);
+        } else {
+          console.log("Usage: /setstatus <online|away|busy>");
+        }
         break;
       default:
         console.log(`Unknown command: ${command}, try '/help' command`);
