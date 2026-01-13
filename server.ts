@@ -12,8 +12,24 @@ type Client = {
   username: string;
   status: State;
 };
+
 const clients: Client[] = [];
+
+function getStatusEmoji(status: State): string {
+  switch (status) {
+    case State.Online:
+      return chalk.green.bold("●");
+    case State.Away:
+      return chalk.yellow.bold("●");
+    case State.Busy:
+      return chalk.red.bold("●");
+  }
+}
+
 const server = net.createServer((socket) => {
+  socket.write(chalk.cyan.bold("\n╔════════════════════════════════════╗\n"));
+  socket.write(chalk.cyan.bold("║        Welcome to Chat Room        ║\n"));
+  socket.write(chalk.cyan.bold("╚════════════════════════════════════╝\n\n"));
   socket.write(chalk.yellow.bold("Enter username: "));
 
   let username = "";
@@ -27,9 +43,16 @@ const server = net.createServer((socket) => {
       clients.push({ socket, username, status });
 
       socket.write(
-        chalk.bgWhite.black(` Welcome ${username}! You can start chatting. \n`),
+        chalk.bgGreen.black(
+          ` ✓ Welcome ${username}! Type /help for commands. \n\n`,
+        ),
       );
-      broadcast(chalk.green.bold(`→ ${username} joined the chat\n`), socket);
+      broadcast(
+        chalk.green(
+          `→ ${username} ${getStatusEmoji(State.Online)} joined the chat\n`,
+        ),
+        socket,
+      );
       return;
     }
     if (message.startsWith("/setstatus")) {
@@ -48,33 +71,71 @@ const server = net.createServer((socket) => {
       }
       const clientIndex: number = clients.findIndex((c) => c.socket === socket);
       if (clientIndex !== -1) {
-        socket.write(chalk.yellow(`Status changed to: ${newStatus}\n`));
-        broadcast(chalk.yellow(`→ ${username} is now ${newStatus}\n`), socket);
+        clients[clientIndex].status = status;
+        socket.write(
+          chalk.yellow(
+            `✓ Status changed to: ${newStatus} ${getStatusEmoji(status)}\n`,
+          ),
+        );
+        broadcast(
+          chalk.yellow(
+            `→ ${username} is now ${newStatus} ${getStatusEmoji(status)}\n`,
+          ),
+          socket,
+        );
       } else {
-        socket.write(chalk.red("Error updating status\n"));
+        socket.write(chalk.red("✗ Error updating status\n"));
       }
       return;
     }
     if (message === "/users") {
       const userList = clients
-        .map((c) => `${c.username} (${State[c.status]})`)
+        .map(
+          (c) =>
+            `  ${getStatusEmoji(c.status)} ${chalk.bold(c.username)} (${State[c.status]})`,
+        )
         .join("\n");
-      socket.write(chalk.cyan(`Online users: \n${userList}\n`));
+      socket.write(
+        chalk.cyan(
+          `\n╭─ Online Users (${clients.length}) ─╮\n${userList}\n╰──────────────────╯\n`,
+        ),
+      );
       return;
     }
     if (message === "/help") {
-      socket.write(chalk.blue("\nHow To Use Commandes: \n"));
+      socket.write(chalk.cyan.bold("\n╭── Available Commands ──╮\n"));
+      socket.write(chalk.cyan("│\n"));
       socket.write(
-        chalk.blue("Every Chat Command Starts With '/' character   "),
-      );
-      socket.write(chalk.blue(" so you can say /clear: to clear the screen"));
-      socket.write(chalk.blue(" you can say /users: to see online users"));
-      socket.write(
-        chalk.blue(
-          "you can say /dm <username> <message>: to send private message to a users",
+        chalk.cyan(
+          "│ " +
+            chalk.yellow("/users") +
+            "              See all online users with status\n",
         ),
       );
-      socket.write(chalk.whiteBright("\n/help: current screen"));
+      socket.write(
+        chalk.cyan(
+          "│ " +
+            chalk.yellow("/dm <user> <msg>") +
+            "     Send private message\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
+          "│ " +
+            chalk.yellow("/setstatus <status>") +
+            " Set status (online/away/busy)\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
+          "│ " + chalk.yellow("/clear") + "             Clear screen\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan("│ " + chalk.yellow("/exit") + "              Exit chat\n"),
+      );
+      socket.write(chalk.cyan("│\n"));
+      // socket.write(chalk.cyan.bold("╰─────────────────────────╯\n"));
       return;
     }
     if (message.startsWith("/dm")) {
@@ -85,23 +146,30 @@ const server = net.createServer((socket) => {
       const recipient = clients.find((c) => c.username === targetUser);
       if (recipient) {
         recipient.socket.write(
-          chalk.blue(`[DM from ${username}]: ${dmMessage}\n`),
+          chalk.magenta(`[DM from ${chalk.bold(username)}]: ${dmMessage}\n`),
         );
-        socket.write(chalk.blue(`[DM to ${targetUser}]: ${dmMessage}\n`));
+        socket.write(
+          chalk.magenta(`[DM to ${chalk.bold(targetUser)}]: ${dmMessage}\n`),
+        );
       } else {
-        socket.write(chalk.red(`User "${targetUser}" not found\n`));
+        socket.write(chalk.red(`X User "${targetUser}" not found\n`));
       }
       return;
     }
 
-    broadcast(`${username}: ${message}\n`, socket);
+    broadcast(chalk.white(`${chalk.cyan(username)}: ${message}\n`), socket);
   });
   socket.on("end", () => {
     const index = clients.findLastIndex((c) => c.socket === socket);
     if (index != -1) {
       const user = clients[index];
       clients.splice(index, 1);
-      broadcast(chalk.red.bold(`← ${user?.username} left the chat\n`), socket);
+      broadcast(
+        chalk.red(
+          `← ${user?.username} ${getStatusEmoji(State.Online)} left the chat\n`,
+        ),
+        socket,
+      );
     }
   });
 });

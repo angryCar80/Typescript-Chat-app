@@ -1,5 +1,6 @@
 import net from "node:net";
 import readline from "node:readline";
+import chalk from "chalk";
 
 const PORT: number = 3000;
 
@@ -12,7 +13,7 @@ const rl = readline.createInterface({
 
 socket.on("data", (data) => {
   console.log("\n" + data.toString());
-  rl.setPrompt("> ");
+  rl.setPrompt(chalk.cyan.bold("> "));
   rl.prompt();
 });
 
@@ -25,6 +26,7 @@ rl.on("line", (input) => {
         console.clear();
         break;
       case "exit":
+        console.log(chalk.yellow("\n✓ Goodbye!\n"));
         process.exit(0);
       case "dm":
         if (args.length >= 2) {
@@ -32,7 +34,7 @@ rl.on("line", (input) => {
           const message = args.slice(1).join(" ");
           socket.write(`/dm ${username} ${message}`);
         } else {
-          console.log("Usage: /dm <username> <message>");
+          console.log(chalk.red("✗ Usage: /dm <username> <message>"));
         }
         break;
       case "users":
@@ -46,11 +48,12 @@ rl.on("line", (input) => {
           const newStatus = args[0];
           socket.write(`/setstatus ${newStatus}`);
         } else {
-          console.log("Usage: /setstatus <online|away|busy>");
+          console.log(chalk.red("✗ Usage: /setstatus <online|away|busy>"));
         }
         break;
       default:
-        console.log(`Unknown command: ${command}, try '/help' command`);
+        console.log(chalk.yellow(`✗ Unknown command: ${command}`));
+        console.log(chalk.gray("   Type '/help' for available commands\n"));
     }
   } else {
     socket.write(input);
@@ -58,6 +61,6 @@ rl.on("line", (input) => {
 });
 
 socket.on("end", () => {
-  console.log("Disconnected from server");
+  console.log(chalk.red("\n✗ Disconnected from server"));
   process.exit(0);
 });
