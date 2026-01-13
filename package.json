@@ -1,10 +1,46 @@
 {
   "name": "tschatapp",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "A TypeScript chat application with server and client",
   "type": "module",
-  "private": true,
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./server": "./dist/server.js",
+    "./client": "./dist/client.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "chat",
+    "typescript",
+    "socket",
+    "networking"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/tschatapp"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/tschatapp/issues"
+  },
+  "homepage": "https://github.com/yourusername/tschatapp#readme",
+  "private": false,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"

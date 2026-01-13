@@ -70,8 +70,10 @@ const server = net.createServer((socket) => {
         return;
       }
       const clientIndex: number = clients.findIndex((c) => c.socket === socket);
+
+      let clientsStatus = clients[clientIndex];
       if (clientIndex !== -1) {
-        clients[clientIndex].status = status;
+        clientsStatus!.status = status;
         socket.write(
           chalk.yellow(
             `✓ Status changed to: ${newStatus} ${getStatusEmoji(status)}\n`,
