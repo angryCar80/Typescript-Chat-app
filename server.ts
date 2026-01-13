@@ -11,6 +11,7 @@ type Client = {
   socket: net.Socket;
   username: string;
   status: State;
+  blockedUsers: string[];
 };
 
 const clients: Client[] = [];
@@ -40,7 +41,7 @@ const server = net.createServer((socket) => {
 
     if (!username) {
       username = message;
-      clients.push({ socket, username, status });
+      clients.push({ socket, username, status, blockedUsers: [] });
 
       socket.write(
         chalk.bgGreen.black(
@@ -130,6 +131,16 @@ const server = net.createServer((socket) => {
       );
       socket.write(
         chalk.cyan(
+          "│ " + chalk.yellow("/block <user>") + "        Block a user\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
+          "│ " + chalk.yellow("/unblock <user>") + "      Unblock a user\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
           "│ " + chalk.yellow("/clear") + "             Clear screen\n",
         ),
       );
@@ -146,16 +157,71 @@ const server = net.createServer((socket) => {
       const dmMessage = parts.slice(1).join(" ");
 
       const recipient = clients.find((c) => c.username === targetUser);
-      if (recipient) {
-        recipient.socket.write(
-          chalk.magenta(`[DM from ${chalk.bold(username)}]: ${dmMessage}\n`),
-        );
-        socket.write(
-          chalk.magenta(`[DM to ${chalk.bold(targetUser)}]: ${dmMessage}\n`),
-        );
-      } else {
-        socket.write(chalk.red(`X User "${targetUser}" not found\n`));
+      if (!recipient) {
+        socket.write(chalk.red(`✗ User "${targetUser}" not found\n`));
+        return;
       }
+
+      if (recipient.blockedUsers.includes(username)) {
+        socket.write(chalk.red(`✗ ${targetUser} has blocked you\n`));
+        return;
+      }
+
+      recipient.socket.write(
+        chalk.magenta(`[DM from ${chalk.bold(username)}]: ${dmMessage}\n`),
+      );
+      socket.write(
+        chalk.magenta(`[DM to ${chalk.bold(targetUser)}]: ${dmMessage}\n`),
+      );
+      return;
+    }
+    if (message.startsWith("/block")) {
+      const targetUser = message.slice(6).trim();
+      const clientIndex = clients.findIndex((c) => c.socket === socket);
+
+      if (clientIndex === -1) {
+        socket.write(chalk.red("✗ Error: User not found\n"));
+        return;
+      }
+
+      if (targetUser === username) {
+        socket.write(chalk.red("✗ You can't block yourself\n"));
+        return;
+      }
+
+      const userExists = clients.some((c) => c.username === targetUser);
+      if (!userExists) {
+        socket.write(chalk.red(`✗ User "${targetUser}" not found\n`));
+        return;
+      }
+
+      if (clients[clientIndex]!.blockedUsers.includes(targetUser)) {
+        socket.write(chalk.yellow(`You already blocked ${targetUser}\n`));
+        return;
+      }
+
+      clients[clientIndex]!.blockedUsers.push(targetUser);
+      socket.write(chalk.green(`✓ You blocked ${chalk.bold(targetUser)}\n`));
+      return;
+    }
+    if (message.startsWith("/unblock")) {
+      const targetUser = message.slice(8).trim();
+      const clientIndex = clients.findIndex((c) => c.socket === socket);
+
+      if (clientIndex === -1) {
+        socket.write(chalk.red("✗ Error: User not found\n"));
+        return;
+      }
+
+      const blockedIndex =
+        clients[clientIndex]!.blockedUsers.indexOf(targetUser);
+      if (blockedIndex === -1) {
+        socket.write(chalk.red(`✗ User "${targetUser}" is not blocked\n`));
+        return;
+      }
+
+      clients[clientIndex]!.blockedUsers.splice(blockedIndex, 1);
+      socket.write(chalk.green(`✓ You unblocked ${chalk.bold(targetUser)}\n`));
       return;
     }
 
@@ -177,13 +243,22 @@ const server = net.createServer((socket) => {
 });
 
 function broadcast(message: string, sender: net.Socket) {
+  const senderClient = clients.find((c) => c.socket === sender);
+
   for (const client of clients) {
-    if (client.socket != sender) {
+    if (
+      client.socket !== sender &&
+      !client.blockedUsers.includes(senderClient?.username || "")
+    ) {
       client.socket.write(message);
     }
   }
 }
 
 server.listen(3000, () => {
-  console.log("Chat server running on port 3000");
+  console.log(chalk.green("Chat server running on port 3000"));
+});
+
+server.on("error", (err) => {
+  console.error("Server error:", err);
 });

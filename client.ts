@@ -51,6 +51,22 @@ rl.on("line", (input) => {
           console.log(chalk.red("✗ Usage: /setstatus <online|away|busy>"));
         }
         break;
+      case "block":
+        if (args.length >= 1) {
+          const targetUser = args[0];
+          socket.write(`/block ${targetUser}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /block <username>"));
+        }
+        break;
+      case "unblock":
+        if (args.length >= 1) {
+          const targetUser = args[0];
+          socket.write(`/unblock ${targetUser}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /unblock <username>"));
+        }
+        break;
       default:
         console.log(chalk.yellow(`✗ Unknown command: ${command}`));
         console.log(chalk.gray("   Type '/help' for available commands\n"));
