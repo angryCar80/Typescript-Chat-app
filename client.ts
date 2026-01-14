@@ -67,6 +67,50 @@ rl.on("line", (input) => {
           console.log(chalk.red("✗ Usage: /unblock <username>"));
         }
         break;
+      case "createroom":
+        if (args.length >= 1) {
+          const roomName = args[0];
+          socket.write(`/createroom ${roomName}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /createroom <roomname>"));
+        }
+        break;
+      case "invite":
+        if (args.length >= 1) {
+          const roomName = args[0];
+          const userName = args[1];
+          socket.write(`/invite ${userName} ${roomName}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /invite <user> <room>"));
+        }
+        break;
+      case "join":
+        if (args.length >= 1) {
+          const roomId = args[0];
+          socket.write(`/join ${roomId}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /join <room-id>"));
+        }
+        break;
+      case "leave":
+        if (args.length >= 1) {
+          const roomId = args[0];
+          socket.write(`/leave ${roomId}`);
+        } else {
+          console.log(chalk.red("✗ Usage: /leave <room-id>"));
+        }
+        break;
+      case "roomlist":
+        socket.write("/roomlist");
+        break;
+      case "roommsg":
+        if (args.length >= 1) {
+          const roomName = args[0];
+          const msg = args.slice(1).join(" ");
+
+          socket.write(`/roommsg ${roomName} ${msg}`);
+        }
+        break;
       default:
         console.log(chalk.yellow(`✗ Unknown command: ${command}`));
         console.log(chalk.gray("   Type '/help' for available commands\n"));
