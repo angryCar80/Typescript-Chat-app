@@ -1,5 +1,7 @@
 import chalk from "chalk";
+import { registerUser, loginUser } from "./src/auth";
 import * as net from "node:net";
+import { password } from "bun";
 
 enum State {
   Online,
@@ -24,6 +26,9 @@ type Client = {
   blockedUsers: string[];
   currentRooms: string[];
   invitedRooms: string[];
+  isAuthenticated: boolean;
+  userId?: string;
+  email?: string;
 };
 
 const clients: Client[] = [];
@@ -92,7 +97,7 @@ const server = net.createServer((socket) => {
   let username = "";
   let status = State.Online;
 
-  socket.on("data", (data) => {
+  socket.on("data", async (data) => {
     const message = data.toString().trim();
 
     if (!username) {
@@ -104,6 +109,7 @@ const server = net.createServer((socket) => {
         blockedUsers: [],
         currentRooms: [],
         invitedRooms: [],
+        isAuthenticated: false,
       });
 
       socket.write(
@@ -457,6 +463,21 @@ const server = net.createServer((socket) => {
         chalk.cyan("│ " + chalk.yellow("/exit") + "              Exit chat\n"),
       );
       socket.write(chalk.cyan("│\n"));
+      socket.write(chalk.cyan.bold("│ Auth Commands:\n"));
+      socket.write(chalk.cyan("│\n"));
+      socket.write(
+        chalk.cyan(
+          "│ " +
+            chalk.yellow("/register <user> <email> <pass>") +
+            " Create account\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
+          "│ " + chalk.yellow("/login <user> <pass>") + "      Authenticate\n",
+        ),
+      );
+      socket.write(chalk.cyan("│\n"));
       socket.write(chalk.cyan.bold("│ Room Commands:\n"));
       socket.write(chalk.cyan("│\n"));
       socket.write(
@@ -523,6 +544,87 @@ const server = net.createServer((socket) => {
       );
       return;
     }
+    if (message.startsWith("/register")) {
+      const parts = message.slice(9).trim().split(" ");
+      const regUsername = parts[0];
+      const email = parts[1];
+      const password = parts[2];
+
+      if (!regUsername || !email || !password) {
+        socket.write(
+          chalk.red("✗ Usage: /register <username> <email> <password>\n"),
+        );
+        return;
+      }
+
+      // Check if user is already authenticated
+      const clientIndex = clients.findIndex((c) => c.socket === socket);
+      if (clientIndex !== -1 && clients[clientIndex]?.isAuthenticated) {
+        socket.write(chalk.red("✗ You are already registered and logged in\n"));
+        return;
+      }
+
+      // Attempt registration
+      const result = await registerUser(regUsername, email, password);
+
+      if (result.success) {
+        socket.write(
+          chalk.green(`✓ Registration successful! Welcome ${regUsername}!\n`),
+        );
+        socket.write(chalk.cyan("You can now use /login to authenticate\n"));
+      } else {
+        socket.write(chalk.red(`✗ Registration failed: ${result.error}\n`));
+      }
+      return;
+    }
+    if (message.startsWith("/login")) {
+      const parts = message.slice(9).trim().split(" ");
+      const loginUsername = parts[0];
+      const password = parts[1];
+
+      if (!loginUsername || !password) {
+        socket.write(chalk.red("✗ Usage: /login <username> <password>\n"));
+        return;
+      }
+
+      // Check if user is already authenticated
+      const clientIndex = clients.findIndex((c) => c.socket === socket);
+      if (clientIndex !== -1 && clients[clientIndex]?.isAuthenticated) {
+        socket.write(chalk.red("✗ You are already logged in\n"));
+        return;
+      }
+
+      // Attempt login
+      const result = await loginUser(loginUsername, password);
+
+      if (result.success) {
+        // Update client with authenticated user data
+        if (clientIndex !== -1) {
+          const currentClient = clients[clientIndex];
+          if (currentClient) {
+            currentClient.isAuthenticated = true;
+            currentClient.userId = result.user?.id;
+            currentClient.email = result.user?.email;
+            currentClient.username = result.user?.username || loginUsername;
+          }
+        }
+
+        socket.write(
+          chalk.green(`✓ Login successful! Welcome back ${loginUsername}!\n`),
+        );
+        broadcast(
+          chalk.green(
+            `→ ${loginUsername} ${getStatusEmoji(State.Online)} authenticated and joined the chat\n`,
+          ),
+          socket,
+        );
+      } else {
+        socket.write(chalk.red(`✗ Login failed: ${result.error}\n`));
+      }
+      return;
+    }
+    if (message === "/logout") {
+    }
     if (message.startsWith("/block")) {
       const targetUser = message.slice(6).trim();
       const clientIndex = clients.findIndex((c) => c.socket === socket);
@@ -571,6 +673,9 @@ const server = net.createServer((socket) => {
       clients[clientIndex]!.blockedUsers.splice(blockedIndex, 1);
       socket.write(chalk.green(`✓ You unblocked ${chalk.bold(targetUser)}\n`));
       return;
+    }
+    if (message === "/whoami") {
+      socket.write(`You are: username:${username}, password:${password}`);
     }
 
     broadcast(chalk.white(`${chalk.cyan(username)}: ${message}\n`), socket);

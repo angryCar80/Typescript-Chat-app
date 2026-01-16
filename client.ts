@@ -111,6 +111,27 @@ rl.on("line", (input) => {
           socket.write(`/roommsg ${roomName} ${msg}`);
         }
         break;
+      case "register":
+        if (args.length >= 1) {
+          const username = args[0];
+          const email = args[1];
+          const password = args[2];
+          socket.write(`/register ${username} ${email} ${password}`);
+        }
+        break;
+      case "login":
+        if (args.length >= 1) {
+          const username = args[0];
+          const password = args[1];
+          socket.write(`/login ${username} ${password}`);
+        }
+        break;
+      case "logout":
+        socket.write("/logout");
+        break;
+      case "whoami":
+        socket.write("/whoami");
+        break;
       default:
         console.log(chalk.yellow(`✗ Unknown command: ${command}`));
         console.log(chalk.gray("   Type '/help' for available commands\n"));
