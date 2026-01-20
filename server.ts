@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { registerUser, loginUser } from "./src/auth";
+import { registerUser, loginUser, logoutUser } from "./src/auth";
 import * as net from "node:net";
 import { password } from "bun";
 
@@ -426,22 +426,22 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/users") +
-            "              See all online users with status\n",
+          chalk.yellow("/users") +
+          "              See all online users with status\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/dm <user> <msg>") +
-            "     Send private message\n",
+          chalk.yellow("/dm <user> <msg>") +
+          "     Send private message\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/setstatus <status>") +
-            " Set status (online/away/busy)\n",
+          chalk.yellow("/setstatus <status>") +
+          " Set status (online/away/busy)\n",
         ),
       );
       socket.write(
@@ -468,13 +468,18 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/register <user> <email> <pass>") +
-            " Create account\n",
+          chalk.yellow("/register <user> <email> <pass>") +
+          " Create account\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " + chalk.yellow("/login <user> <pass>") + "      Authenticate\n",
+        ),
+      );
+      socket.write(
+        chalk.cyan(
+          "│ " + chalk.yellow("/logout") + "             Sign out\n",
         ),
       );
       socket.write(chalk.cyan("│\n"));
@@ -488,15 +493,15 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/invite <user> <room>") +
-            " Invite user to room\n",
+          chalk.yellow("/invite <user> <room>") +
+          " Invite user to room\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/join <room-id>") +
-            "      Accept room invitation\n",
+          chalk.yellow("/join <room-id>") +
+          "      Accept room invitation\n",
         ),
       );
       socket.write(
@@ -512,8 +517,8 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-            chalk.yellow("/roommsg <room> <msg>") +
-            " Send message to room\n",
+          chalk.yellow("/roommsg <room> <msg>") +
+          " Send message to room\n",
         ),
       );
       socket.write(chalk.cyan("│\n"));
@@ -624,6 +629,40 @@ const server = net.createServer((socket) => {
       return;
     }
     if (message === "/logout") {
+      const clientIndex = clients.findIndex((c) => c.socket === socket);
+      if (clientIndex === -1) {
+        socket.write(chalk.red("✗ Error: User not found\n"));
+        return;
+      }
+
+      const client = clients[clientIndex];
+      if (!client?.isAuthenticated) {
+        socket.write(chalk.red("✗ You are not logged in\n"));
+        return;
+      }
+
+      // Attempt logout
+      if (client.userId) {
+        const result = await logoutUser(client.userId);
+        
+        if (result.success) {
+          // Reset client authentication state
+          client.isAuthenticated = false;
+          client.userId = undefined;
+          client.email = undefined;
+          
+          socket.write(chalk.green("✓ Successfully logged out\n"));
+          broadcast(
+            chalk.yellow(`→ ${client.username} logged out\n`),
+            socket,
+          );
+        } else {
+          socket.write(chalk.red(`✗ Logout failed: ${result.error}\n`));
+        }
+      } else {
+        socket.write(chalk.red("✗ No active session to logout\n"));
+      }
+      return;
     }
     if (message.startsWith("/block")) {
       const targetUser = message.slice(6).trim();

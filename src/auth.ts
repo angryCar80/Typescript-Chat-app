@@ -17,7 +17,10 @@ export async function registerUser(
       return { success: false, error: "Valid email required" };
     }
     if (!password || password.length < 6) {
-      return { success: false, error: "Password must be at least 6 characters" };
+      return {
+        success: false,
+        error: "Password must be at least 6 characters",
+      };
     }
 
     // Hash password
@@ -68,5 +71,18 @@ export async function loginUser(
     return { success: true, user: userWithoutPassword };
   } catch (error) {
     return { success: false, error: "Login failed" };
+  }
+}
+
+// Logout user function
+export async function logoutUser(
+  userId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // In a simple implementation, logout just invalidates the session
+    // This could be extended to manage sessions in a database or cache
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Logout failed" };
   }
 }

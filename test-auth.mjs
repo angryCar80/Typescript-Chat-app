@@ -6,13 +6,21 @@ async function testAuth() {
 
   // Test 1: Register a new user
   console.log("1️⃣ Testing registration:");
-  const regResult = await registerUser("testuser", "test@example.com", "password123");
+  const regResult = await registerUser(
+    "testuser",
+    "test@example.com",
+    "password123",
+  );
   console.log("   Result:", regResult);
   console.log("");
 
   // Test 2: Try to register same user again
   console.log("2️⃣ Testing duplicate registration:");
-  const dupResult = await registerUser("testuser", "test2@example.com", "password123");
+  const dupResult = await registerUser(
+    "testuser",
+    "test2@example.com",
+    "password123",
+  );
   console.log("   Result:", dupResult);
   console.log("");
 
