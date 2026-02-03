@@ -2,6 +2,8 @@ import chalk from "chalk";
 import { registerUser, loginUser, logoutUser } from "./src/auth";
 import * as net from "node:net";
 import { password } from "bun";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 enum State {
   Online,
@@ -123,6 +125,60 @@ const server = net.createServer((socket) => {
         ),
         socket,
       );
+      return;
+    }
+    if (message.startsWith("/file")) {
+      const filePath = message.slice(5).trim();
+      if (!filePath) {
+        socket.write(chalk.red("✗ Usage: /file <file-path>\n"));
+        return;
+      }
+
+      // Security check - prevent directory traversal
+      const normalizedPath = path.normalize(filePath);
+      if (normalizedPath.includes("..") || normalizedPath.startsWith("/")) {
+        socket.write(chalk.red("✗ Access denied: Invalid file path\n"));
+        return;
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(normalizedPath)) {
+        socket.write(chalk.red(`✗ File "${normalizedPath}" not found\n`));
+        return;
+      }
+
+      // Check if it's a file (not directory)
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        socket.write(chalk.red(`✗ "${normalizedPath}" is not a file\n`));
+        return;
+      }
+
+      // Check file size (limit to 1MB for safety)
+      const maxSize = 1024 * 1024; // 1MB
+      if (stats.size > maxSize) {
+        socket.write(chalk.red(`✗ File too large (max 1MB)\n`));
+        return;
+      }
+
+      try {
+        // Read file content
+        const fileContent = fs.readFileSync(normalizedPath, "utf8");
+        
+        // Send file info and content
+        socket.write(chalk.green(`✓ File: ${normalizedPath} (${stats.size} bytes)\n`));
+        socket.write(chalk.cyan("─".repeat(50) + "\n"));
+        socket.write(chalk.white(fileContent) + "\n");
+        socket.write(chalk.cyan("─".repeat(50) + "\n"));
+        
+        // Broadcast to other users that a file was shared
+        broadcast(
+          chalk.yellow(`📄 ${username} shared file "${normalizedPath}"\n`),
+          socket
+        );
+      } catch (error) {
+        socket.write(chalk.red(`✗ Error reading file: ${error}\n`));
+      }
       return;
     }
     if (message.startsWith("/createroom")) {
@@ -426,22 +482,22 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/users") +
-          "              See all online users with status\n",
+            chalk.yellow("/users") +
+            "              See all online users with status\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/dm <user> <msg>") +
-          "     Send private message\n",
+            chalk.yellow("/dm <user> <msg>") +
+            "     Send private message\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/setstatus <status>") +
-          " Set status (online/away/busy)\n",
+            chalk.yellow("/setstatus <status>") +
+            " Set status (online/away/busy)\n",
         ),
       );
       socket.write(
@@ -454,22 +510,25 @@ const server = net.createServer((socket) => {
           "│ " + chalk.yellow("/unblock <user>") + "      Unblock a user\n",
         ),
       );
+socket.write(
+        chalk.cyan(
+          "│ " + chalk.yellow("/file <path>") + "         Share file content\n",
+        ),
+      );
       socket.write(
         chalk.cyan(
           "│ " + chalk.yellow("/clear") + "             Clear screen\n",
         ),
       );
-      socket.write(
-        chalk.cyan("│ " + chalk.yellow("/exit") + "              Exit chat\n"),
-      );
+      socket.write(chalk.cyan("│ " + chalk.yellow("/exit") + "              Exit chat\n"));
       socket.write(chalk.cyan("│\n"));
       socket.write(chalk.cyan.bold("│ Auth Commands:\n"));
       socket.write(chalk.cyan("│\n"));
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/register <user> <email> <pass>") +
-          " Create account\n",
+            chalk.yellow("/register <user> <email> <pass>") +
+            " Create account\n",
         ),
       );
       socket.write(
@@ -478,9 +537,7 @@ const server = net.createServer((socket) => {
         ),
       );
       socket.write(
-        chalk.cyan(
-          "│ " + chalk.yellow("/logout") + "             Sign out\n",
-        ),
+        chalk.cyan("│ " + chalk.yellow("/logout") + "             Sign out\n"),
       );
       socket.write(chalk.cyan("│\n"));
       socket.write(chalk.cyan.bold("│ Room Commands:\n"));
@@ -493,15 +550,15 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/invite <user> <room>") +
-          " Invite user to room\n",
+            chalk.yellow("/invite <user> <room>") +
+            " Invite user to room\n",
         ),
       );
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/join <room-id>") +
-          "      Accept room invitation\n",
+            chalk.yellow("/join <room-id>") +
+            "      Accept room invitation\n",
         ),
       );
       socket.write(
@@ -517,8 +574,8 @@ const server = net.createServer((socket) => {
       socket.write(
         chalk.cyan(
           "│ " +
-          chalk.yellow("/roommsg <room> <msg>") +
-          " Send message to room\n",
+            chalk.yellow("/roommsg <room> <msg>") +
+            " Send message to room\n",
         ),
       );
       socket.write(chalk.cyan("│\n"));
@@ -644,18 +701,15 @@ const server = net.createServer((socket) => {
       // Attempt logout
       if (client.userId) {
         const result = await logoutUser(client.userId);
-        
+
         if (result.success) {
           // Reset client authentication state
           client.isAuthenticated = false;
           client.userId = undefined;
           client.email = undefined;
-          
+
           socket.write(chalk.green("✓ Successfully logged out\n"));
-          broadcast(
-            chalk.yellow(`→ ${client.username} logged out\n`),
-            socket,
-          );
+          broadcast(chalk.yellow(`→ ${client.username} logged out\n`), socket);
         } else {
           socket.write(chalk.red(`✗ Logout failed: ${result.error}\n`));
         }

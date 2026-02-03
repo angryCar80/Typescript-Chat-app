@@ -67,6 +67,13 @@ rl.on("line", (input) => {
           console.log(chalk.red("✗ Usage: /unblock <username>"));
         }
         break;
+
+      case "file":
+        if (args.length >= 1) {
+          const filePath = args[0];
+          socket.write(`/file ${filePath}`);
+        }
+        break;
       case "createroom":
         if (args.length >= 1) {
           const roomName = args[0];
